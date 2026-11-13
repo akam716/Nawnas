@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 import 'menu.dart';
 
@@ -7,14 +10,14 @@ void main() {
 }
 
 class AppColors {
+  static const accent = Color(0xFFE88D9A);
+  static const background = Color(0xFFF8F5EF);
   static const primary = Color(0xFF247C70);
   static const primaryDark = Color(0xFF185D55);
-  static const background = Color(0xFFF8F5EF);
-  static const surface = Colors.white;
-  static const accent = Color(0xFFE88D9A);
-  static const text = Color(0xFF263B38);
   static const secondaryText = Color(0xFF788783);
   static const softGreen = Color(0xFFE8F2EE);
+  static const surface = Colors.white;
+  static const text = Color(0xFF263B38);
 }
 
 class NawnasApp extends StatefulWidget {
@@ -36,7 +39,7 @@ class _NawnasAppState extends State<NawnasApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'n',
+      title: 'nawnas',
       debugShowCheckedModeBanner: false,
       themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
       theme: ThemeData(
@@ -66,26 +69,37 @@ class _NawnasAppState extends State<NawnasApp> {
 }
 
 class BabyName {
-  final String name;
-  final String meaning;
-  final String category;
-
   const BabyName({
     required this.name,
     required this.meaning,
     required this.category,
   });
+
+  factory BabyName.fromJson(
+    Map<String, dynamic> json, {
+    String? fallbackCategory,
+  }) {
+    return BabyName(
+      name: (json['name'] ?? '').toString(),
+      meaning: (json['meaning'] ?? '').toString(),
+      category: (json['category'] ?? fallbackCategory ?? '').toString(),
+    );
+  }
+
+  final String category;
+  final String meaning;
+  final String name;
 }
 
 class HomePage extends StatefulWidget {
-  final bool isDarkMode;
-  final ValueChanged<bool> onDarkModeChanged;
-
   const HomePage({
     super.key,
     required this.isDarkMode,
     required this.onDarkModeChanged,
   });
+
+  final bool isDarkMode;
+  final ValueChanged<bool> onDarkModeChanged;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -93,16 +107,12 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
-  final TextEditingController _searchController = TextEditingController();
+  static const String _jsonPath = 'assets/names.json';
 
-  bool _isSearching = false;
-  String _searchText = '';
-  String? _selectedLetter;
-
-  final Set<String> _favoriteNames = {};
   final Map<String, List<String>> _commentsByName = {};
-
+  final Set<String> _favoriteNames = {};
+  bool _isLoading = true;
+  bool _isSearching = false;
   final List<String> _letters = const [
     'ئ',
     'ا',
@@ -139,38 +149,65 @@ class _HomePageState extends State<HomePage>
     'ێ',
   ];
 
-  final List<List<BabyName>> _namesByCategory = const [
-    [
-      BabyName(name: 'مم', meaning: ' و بەختەوەری', category: 'کچ'),
-      BabyName(name: 'ززخخ', meaning: 'ژیان و زیندوویی', category: 'کچ'),
-      BabyName(name: 'z', meaning: 'ڕووناکی و خۆر', category: 'کچ'),
-      BabyName(name: 'مم', meaning: 'پاک و ڕوون', category: 'کچ'),
-      BabyName(name: 'باران', meaning: 'بارینی باران', category: 'کچ'),
-    ],
-    [
-      BabyName(
-        name: 'ئاراس',
-        meaning: 'ناوی ڕووبارێکی ناسراو',
-        category: 'کوڕ',
-      ),
-      BabyName(name: 'هێمن', meaning: 'ئارام و بێدەنگ', category: 'کوڕ'),
-      BabyName(name: 'کاروان', meaning: 'گەشتیار و کاروان', category: 'کوڕ'),
-      BabyName(name: 'ئاوات', meaning: 'هیوا و ئارەزوو', category: 'کوڕ'),
-      BabyName(name: 'بەهروز', meaning: 'خاوەنی بەختی باش', category: 'کوڕ'),
-    ],
-    [
-      BabyName(name: 'ڕۆژ', meaning: 'ڕووناکی و خۆر', category: 'هاوبەش'),
-      BabyName(name: 'ئومێد', meaning: 'هیوا و چاوەڕوانی', category: 'هاوبەش'),
-      BabyName(name: 'باران', meaning: 'بارینی باران', category: 'هاوبەش'),
-      BabyName(name: 'ئاوات', meaning: 'هیوا و ئارەزوو', category: 'هاوبەش'),
-    ],
-  ];
+  String? _loadError;
+  // Order matches the tabs: 0 = کچ (girl), 1 = کوڕ (boy), 2 = هاوبەش (both)
+  List<List<BabyName>> _namesByCategory = [[], [], []];
+
+  final TextEditingController _searchController = TextEditingController();
+  String _searchText = '';
+  String? _selectedLetter;
+  late final TabController _tabController;
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(_onTabChanged);
+    _loadNames();
+  }
+
+  Future<void> _loadNames() async {
+    try {
+      final raw = await rootBundle.loadString(_jsonPath);
+      final data = json.decode(raw) as Map<String, dynamic>;
+
+      List<BabyName> parse(String key, String label) {
+        final list = (data[key] as List<dynamic>? ?? []);
+        return list
+            .map(
+              (e) => BabyName.fromJson(
+                e as Map<String, dynamic>,
+                fallbackCategory: label,
+              ),
+            )
+            .toList();
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _namesByCategory = [
+          parse('girl', 'کچ'),
+          parse('boy', 'کوڕ'),
+          parse('both', 'هاوبەش'),
+        ];
+        _isLoading = false;
+        _loadError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _loadError = 'هەڵە لە خوێندنەوەی داتا: $e';
+      });
+    }
   }
 
   void _onTabChanged() {
@@ -179,14 +216,6 @@ class _HomePageState extends State<HomePage>
         _selectedLetter = null;
       });
     }
-  }
-
-  @override
-  void dispose() {
-    _tabController.removeListener(_onTabChanged);
-    _tabController.dispose();
-    _searchController.dispose();
-    super.dispose();
   }
 
   List<BabyName> _getVisibleNames(int categoryIndex) {
@@ -228,25 +257,6 @@ class _HomePageState extends State<HomePage>
 
   void _shareName(BabyName item) {
     _showMessage('ناو: ${item.name} — واتا: ${item.meaning}');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        drawer: MenuDrawer(
-          isDarkMode: widget.isDarkMode,
-          onDarkModeChanged: widget.onDarkModeChanged,
-          onMenuSelected: _showMessage,
-        ),
-        appBar: _buildAppBar(),
-        body: TabBarView(
-          controller: _tabController,
-          children: List.generate(3, _buildCategoryPage),
-        ),
-      ),
-    );
   }
 
   PreferredSizeWidget _buildAppBar() {
@@ -323,6 +333,18 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _buildCategoryPage(int categoryIndex) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_loadError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(_loadError!, textAlign: TextAlign.center),
+        ),
+      );
+    }
+
     final names = _getVisibleNames(categoryIndex);
 
     return Row(
@@ -712,6 +734,25 @@ class _HomePageState extends State<HomePage>
           ),
         );
       },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        drawer: MenuDrawer(
+          isDarkMode: widget.isDarkMode,
+          onDarkModeChanged: widget.onDarkModeChanged,
+          onMenuSelected: _showMessage,
+        ),
+        appBar: _buildAppBar(),
+        body: TabBarView(
+          controller: _tabController,
+          children: List.generate(3, _buildCategoryPage),
+        ),
+      ),
     );
   }
 }
