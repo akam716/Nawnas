@@ -36,7 +36,7 @@ class _NawnasAppState extends State<NawnasApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'nawnas',
+      title: 'n',
       debugShowCheckedModeBanner: false,
       themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
       theme: ThemeData(
@@ -104,17 +104,47 @@ class _HomePageState extends State<HomePage>
   final Map<String, List<String>> _commentsByName = {};
 
   final List<String> _letters = const [
-    'ئ', 'ا', 'ب', 'پ', 'ت', 'ج', 'چ', 'ح', 'خ', 'د', 'ر', 'ڕ',
-    'ز', 'ژ', 'س', 'ش', 'ع', 'غ', 'ف', 'ڤ', 'ق', 'ک', 'گ', 'ل',
-    'ڵ', 'م', 'ن', 'ھ', 'ە', 'و', 'ۆ', 'ی', 'ێ',
+    'ئ',
+    'ا',
+    'ب',
+    'پ',
+    'ت',
+    'ج',
+    'چ',
+    'ح',
+    'خ',
+    'د',
+    'ر',
+    'ڕ',
+    'ز',
+    'ژ',
+    'س',
+    'ش',
+    'ع',
+    'غ',
+    'ف',
+    'ڤ',
+    'ق',
+    'ک',
+    'گ',
+    'ل',
+    'ڵ',
+    'م',
+    'ن',
+    'ھ',
+    'ە',
+    'و',
+    'ۆ',
+    'ی',
+    'ێ',
   ];
 
   final List<List<BabyName>> _namesByCategory = const [
     [
-      BabyName(name: 'هانا', meaning: 'خۆشی و بەختەوەری', category: 'کچ'),
-      BabyName(name: 'ژین', meaning: 'ژیان و زیندوویی', category: 'کچ'),
-      BabyName(name: 'روژین', meaning: 'ڕووناکی و خۆر', category: 'کچ'),
-      BabyName(name: 'ئارین', meaning: 'پاک و ڕوون', category: 'کچ'),
+      BabyName(name: 'مم', meaning: ' و بەختەوەری', category: 'کچ'),
+      BabyName(name: 'ززخخ', meaning: 'ژیان و زیندوویی', category: 'کچ'),
+      BabyName(name: 'z', meaning: 'ڕووناکی و خۆر', category: 'کچ'),
+      BabyName(name: 'مم', meaning: 'پاک و ڕوون', category: 'کچ'),
       BabyName(name: 'باران', meaning: 'بارینی باران', category: 'کچ'),
     ],
     [
@@ -172,8 +202,7 @@ class _HomePageState extends State<HomePage>
       final query = _searchText.trim();
       names = names
           .where(
-            (item) =>
-                item.name.contains(query) || item.meaning.contains(query),
+            (item) => item.name.contains(query) || item.meaning.contains(query),
           )
           .toList();
     }
@@ -192,9 +221,9 @@ class _HomePageState extends State<HomePage>
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _shareName(BabyName item) {
@@ -241,10 +270,7 @@ class _HomePageState extends State<HomePage>
             )
           : const Text(
               'nawnas',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 23,
-              ),
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 23),
             ),
       actions: [
         IconButton(
@@ -465,8 +491,9 @@ class _HomePageState extends State<HomePage>
                       ? Icons.favorite_rounded
                       : Icons.favorite_border_rounded,
                   label: 'لایک',
-                  color:
-                      isFavorite ? AppColors.accent : AppColors.secondaryText,
+                  color: isFavorite
+                      ? AppColors.accent
+                      : AppColors.secondaryText,
                   onTap: () => _toggleFavorite(item.name),
                 ),
                 const SizedBox(width: 18),
@@ -507,10 +534,7 @@ class _HomePageState extends State<HomePage>
           children: [
             Icon(icon, size: 18, color: color),
             const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(color: color, fontSize: 12),
-            ),
+            Text(label, style: TextStyle(color: color, fontSize: 12)),
           ],
         ),
       ),
